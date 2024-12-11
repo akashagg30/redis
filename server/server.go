@@ -26,6 +26,7 @@ func StartServer(address string) {
 }
 
 func handleConnection(conn net.Conn) {
+	defer fmt.Printf("closing connection %s\n", conn.RemoteAddr())
 	defer conn.Close()
 
 	fmt.Printf("New Connection from %s\n", conn.RemoteAddr())
