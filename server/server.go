@@ -1,6 +1,7 @@
 package server
 
 import (
+	"bytes"
 	"fmt"
 	"log"
 	"net"
@@ -35,7 +36,6 @@ func handleConnection(conn net.Conn, handler MessageHandler) {
 
 	buffer := make([]byte, 1024)
 	var msg []byte
-	var err error
 
 	for {
 		n, err := conn.Read(buffer)
@@ -48,15 +48,17 @@ func handleConnection(conn net.Conn, handler MessageHandler) {
 
 		msg = append(msg, buffer[:n]...)
 
-		// // Print the received data
-		// fmt.Printf("Received: %s\n", string(buffer[:n]))
-
-		// Send a response to the client
-	}
-	response := handler(msg)
-	_, err = conn.Write(response)
-	if err != nil {
-		log.Println("Error writing:", err)
+		if newLineIndex := bytes.IndexByte(msg, '\n'); newLineIndex != -1 {
+			clientMsg := msg[:newLineIndex]
+			fmt.Printf("Received: %s\n", string(clientMsg))
+			response := handler(clientMsg) // getting response for the message
+			_, err = conn.Write(response)  // sending response back to client
+			if err != nil {
+				log.Println("Error writing:", err)
+			}
+			// clearing processed msg
+			msg = msg[newLineIndex+1:]
+		}
 	}
 
 }
