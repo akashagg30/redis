@@ -35,6 +35,7 @@ func handleConnection(conn net.Conn, handler MessageHandler) {
 
 	buffer := make([]byte, 1024)
 	var msg []byte
+	var err error
 
 	for {
 		n, err := conn.Read(buffer)
