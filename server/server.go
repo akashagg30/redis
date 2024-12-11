@@ -1,13 +1,12 @@
 package server
 
 import (
-	"bytes"
 	"fmt"
 	"log"
 	"net"
 )
 
-type MessageHandler func([]byte) []byte
+type MessageHandler func(inputChannel chan []byte, outputChannel chan []byte)
 
 func StartServer(address string, handler MessageHandler) {
 	listner, err := net.Listen("tcp", address)
@@ -34,9 +33,26 @@ func handleConnection(conn net.Conn, handler MessageHandler) {
 
 	fmt.Printf("New Connection from %s\n", conn.RemoteAddr())
 
-	buffer := make([]byte, 1024)
-	var msg []byte
+	inputChannel := make(chan []byte)
+	outputChannel := make(chan []byte)
+	defer close(inputChannel)
+	go handler(inputChannel, outputChannel)
 
+	buffer := make([]byte, 1024)
+
+	go func() { // for returning the response to the client
+		for {
+			response, ok := <-outputChannel // getting response for the client
+			if !ok {                        // if outputChannel is closed
+				fmt.Println("closing output loop")
+				return
+			}
+			_, err := conn.Write(response) // sending response back to client
+			if err != nil {
+				log.Println("Error writing:", err)
+			}
+		}
+	}()
 	for {
 		n, err := conn.Read(buffer)
 		if err != nil {
@@ -46,19 +62,7 @@ func handleConnection(conn net.Conn, handler MessageHandler) {
 			break
 		}
 
-		msg = append(msg, buffer[:n]...)
-
-		if newLineIndex := bytes.IndexByte(msg, '\n'); newLineIndex != -1 {
-			clientMsg := msg[:newLineIndex]
-			fmt.Printf("Received: %s\n", string(clientMsg))
-			response := handler(clientMsg) // getting response for the message
-			_, err = conn.Write(response)  // sending response back to client
-			if err != nil {
-				log.Println("Error writing:", err)
-			}
-			// clearing processed msg
-			msg = msg[newLineIndex+1:]
-		}
+		inputChannel <- buffer[:n]
+		fmt.Printf("Received: %s\n", string(buffer[:n]))
 	}
-
 }

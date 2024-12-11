@@ -7,8 +7,16 @@ import (
 	"github.com/akashagg30/redis/server"
 )
 
-func messageHandler(msg []byte) []byte {
-	return append(msg, byte('\n'))
+func messageHandler(inputChannel chan []byte, outputChannel chan []byte) {
+	defer close(outputChannel)
+	for {
+		data, ok := <-inputChannel
+		if !ok {
+			fmt.Println("closing handler loop")
+			break
+		}
+		outputChannel <- data
+	}
 }
 
 func main() {
