@@ -21,6 +21,7 @@ func StartServer(address string) {
 		if err != nil {
 			log.Println("Error Accepting Connections : ", err)
 		}
+		go handleConnection(conn)
 	}
 }
 
