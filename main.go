@@ -4,7 +4,7 @@ package main
 import (
 	"fmt"
 
-	"github.com/akashagg30/redis/tree/main/server"
+	"github.com/akashagg30/redis/server"
 )
 
 func main() {
