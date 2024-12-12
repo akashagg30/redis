@@ -1,7 +1,6 @@
 package server
 
 import (
-	"fmt"
 	"log"
 	"net"
 )
@@ -16,7 +15,7 @@ func StartServer(address string, handler MessageHandler) {
 	}
 	defer listner.Close()
 
-	fmt.Printf("Server listening on %s...\n", address)
+	log.Printf("Server listening on %s...\n", address)
 
 	for {
 		conn, err := listner.Accept()
@@ -28,10 +27,10 @@ func StartServer(address string, handler MessageHandler) {
 }
 
 func handleConnection(conn net.Conn, handler MessageHandler) {
-	defer fmt.Printf("closing connection %s\n", conn.RemoteAddr())
+	defer log.Printf("closing connection %s\n", conn.RemoteAddr())
 	defer conn.Close()
 
-	fmt.Printf("New Connection from %s\n", conn.RemoteAddr())
+	log.Printf("New Connection from %s\n", conn.RemoteAddr())
 
 	inputChannel := make(chan []byte)
 	outputChannel := make(chan []byte)
@@ -44,7 +43,7 @@ func handleConnection(conn net.Conn, handler MessageHandler) {
 		for {
 			response, ok := <-outputChannel // getting response for the client
 			if !ok {                        // if outputChannel is closed
-				fmt.Println("closing output loop")
+				// fmt.Println("closing output loop")
 				return
 			}
 			_, err := conn.Write(response) // sending response back to client
@@ -63,6 +62,6 @@ func handleConnection(conn net.Conn, handler MessageHandler) {
 		}
 
 		inputChannel <- buffer[:n]
-		fmt.Printf("Received: %s\n", string(buffer[:n]))
+		// fmt.Printf("Received: %s\n", string(buffer[:n]))
 	}
 }

@@ -2,28 +2,24 @@
 package main
 
 import (
-	"fmt"
+	"log"
 
+	"github.com/akashagg30/redis/redis"
 	"github.com/akashagg30/redis/server"
 )
 
-func messageHandler(inputChannel chan []byte, outputChannel chan []byte) {
-	defer close(outputChannel)
-	for {
-		data, ok := <-inputChannel
-		if !ok {
-			fmt.Println("closing handler loop")
-			break
-		}
-		outputChannel <- data
-	}
-}
-
 func main() {
+	// log.SetOutput(os.Stdout)
 	// Start the TCP server from the server module
-	go server.StartServer(":8080", messageHandler) // Starts the server on port 8080
+	go server.StartServer(":8080", redis.MessageHandler) // Starts the server on port 8080
 
 	// Simulate other work in your main program
-	fmt.Println("Main program running. Server is listening...")
+	log.Println("Main program running. Server is listening...")
 	select {} // Block forever, keeping the server running
+	// d := redis.NewRESPDeserializer([]byte("$5\r\n"))
+	// go func() {
+	// 	time.Sleep(2 * time.Second)
+	// 	d.AddData([]byte("hello\r\n"))
+	// }()
+	// fmt.Println(d.Deserialize())
 }

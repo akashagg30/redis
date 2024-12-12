@@ -1,15 +1,31 @@
 package redis
 
-import "fmt"
+import (
+	"fmt"
+	"log"
+)
 
-func messageHandler(inputChannel chan []byte, outputChannel chan []byte) {
-	defer close(outputChannel)
+func MessageHandler(inputChannel chan []byte, outputChannel chan []byte) {
+	resp := NewRESP(make([]byte, 0))
+	defer resp.Close()
+	go func() {
+		defer close(outputChannel)
+		for {
+			data, ok := resp.Deserialize()
+			if !ok {
+				break
+			}
+			log.Println("processed data :", data)
+			outputChannel <- []byte("+OK\r\n")
+		}
+	}()
 	for {
 		data, ok := <-inputChannel
 		if !ok {
 			fmt.Println("closing handler loop")
 			break
 		}
-		outputChannel <- data
+		log.Println("recieved data", string(data))
+		resp.AddData(data)
 	}
 }
