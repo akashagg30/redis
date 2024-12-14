@@ -3,10 +3,12 @@ package redis
 import (
 	"fmt"
 	"log"
+
+	"github.com/akashagg30/redis/redis/resp"
 )
 
 func MessageHandler(inputChannel chan []byte, outputChannel chan []byte) {
-	resp := NewRESP(make([]byte, 0))
+	resp := resp.NewRESP(make([]byte, 0))
 	defer resp.Close()
 	go func() {
 		defer close(outputChannel)

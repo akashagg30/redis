@@ -16,10 +16,9 @@ func main() {
 	// Simulate other work in your main program
 	log.Println("Main program running. Server is listening...")
 	select {} // Block forever, keeping the server running
-	// d := redis.NewRESPDeserializer([]byte("$5\r\n"))
-	// go func() {
-	// 	time.Sleep(2 * time.Second)
-	// 	d.AddData([]byte("hello\r\n"))
-	// }()
-	// fmt.Println(d.Deserialize())
+	// storage1 := storage.NewRedisStorage()
+	// storage1.Set("key1", "value1")
+	// fmt.Println(storage1.Get("key1"))
+	// storage2 := storage.NewRedisStorage()
+	// fmt.Println(storage2.Get("key1"))
 }

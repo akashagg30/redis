@@ -1,4 +1,4 @@
-package redis
+package resp
 
 type RESP struct {
 	*RESPSerializer
