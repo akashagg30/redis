@@ -1,9 +1,21 @@
 package storage
 
-import "sync"
+import (
+	"sync"
+	"time"
+)
 
 type IntOrString interface {
 	// int64 |string
+}
+
+type RedisValueWithMeta struct {
+	expiry_timestamp int64 // time to live, unix timestamp
+	value            any
+}
+
+func newRedisValueWithMeta(expiry_timestamp int64, value any) RedisValueWithMeta {
+	return RedisValueWithMeta{expiry_timestamp: expiry_timestamp, value: value}
 }
 
 type KeyedMutex struct {
@@ -42,10 +54,11 @@ func (k *KeyedMutex) Unlock(key IntOrString) bool {
 type RedisStorage interface {
 	Get(key IntOrString) any
 	Set(key IntOrString, value any) bool
+	Delete(key IntOrString)
 }
 
 type SimpleRedisStorage struct {
-	dataMap map[IntOrString]any
+	dataMap map[IntOrString]RedisValueWithMeta
 	km      *KeyedMutex
 }
 
@@ -57,8 +70,7 @@ var (
 func NewRedisStorage() RedisStorage {
 	redisStorageOnce.Do(
 		func() {
-			redisStorageInstance = &SimpleRedisStorage{dataMap: make(map[IntOrString]any), km: &KeyedMutex{}}
-
+			redisStorageInstance = &SimpleRedisStorage{dataMap: make(map[IntOrString]RedisValueWithMeta), km: &KeyedMutex{}}
 		},
 	)
 	return redisStorageInstance
@@ -68,17 +80,26 @@ func (r *SimpleRedisStorage) Get(key IntOrString) any {
 	r.km.Lock(key)
 	defer r.km.Unlock(key)
 
-	if value, exists := r.dataMap[key]; exists {
-		return value
-	} else {
-		return nil
+	if data, exists := r.dataMap[key]; exists {
+		if data.expiry_timestamp > time.Now().Unix() {
+			return data.value
+		} else {
+			go r.Delete(key) // TODO: check if this might cause async problem
+		}
 	}
+	return nil
 }
 
 func (r *SimpleRedisStorage) Set(key IntOrString, value any) bool {
 	r.km.Lock(key)
 	defer r.km.Unlock(key)
 
-	r.dataMap[key] = value
+	r.dataMap[key] = newRedisValueWithMeta(0, value)
 	return true
+}
+
+func (r *SimpleRedisStorage) Delete(key IntOrString) {
+	r.km.Lock(key)
+	delete(r.dataMap, key)
+	r.km.Unlock(key)
 }

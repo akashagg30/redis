@@ -4,12 +4,14 @@ import (
 	"fmt"
 	"log"
 
+	"github.com/akashagg30/redis/redis/controller"
 	"github.com/akashagg30/redis/redis/resp"
 )
 
 func MessageHandler(inputChannel chan []byte, outputChannel chan []byte) {
 	resp := resp.NewRESP(make([]byte, 0))
 	defer resp.Close()
+	redis_controller := controller.NewRedisController()
 	go func() {
 		defer close(outputChannel)
 		for {
@@ -17,8 +19,12 @@ func MessageHandler(inputChannel chan []byte, outputChannel chan []byte) {
 			if !ok {
 				break
 			}
+			dataArray := data.([]any)
+			output := redis_controller.Execute(dataArray[0].(string), dataArray[1:]...)
+			byteOutput := resp.Serialize(output)
 			log.Println("processed data :", data)
-			outputChannel <- []byte("+OK\r\n")
+			log.Println("processed data output :", string(byteOutput))
+			outputChannel <- byteOutput
 		}
 	}()
 	for {
