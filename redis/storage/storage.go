@@ -5,56 +5,11 @@ import (
 	"time"
 )
 
-type IntOrString interface {
-	// int64 |string
-}
-
-type RedisValueWithMeta struct {
-	expiry_timestamp int64 // time to live, unix timestamp
-	value            any
-}
-
-func newRedisValueWithMeta(expiry_timestamp int64, value any) RedisValueWithMeta {
-	return RedisValueWithMeta{expiry_timestamp: expiry_timestamp, value: value}
-}
-
-type KeyedMutex struct {
-	mutexes sync.Map
-}
-
-func (k *KeyedMutex) getMutex(key IntOrString) (*sync.Mutex, bool) {
-	value, exists := k.mutexes.Load(key)
-	if !exists {
-		return nil, false
-	}
-	return value.(*sync.Mutex), true
-}
-
-func (k *KeyedMutex) setAndGetMutex(key IntOrString) (mtx *sync.Mutex, exists bool) {
-	value, exists := k.mutexes.LoadOrStore(key, &sync.Mutex{})
-	mtx = value.(*sync.Mutex)
-	return mtx, exists
-}
-
-func (k *KeyedMutex) Lock(key IntOrString) {
-	mtx, _ := k.setAndGetMutex(key)
-	mtx.Lock()
-}
-
-func (k *KeyedMutex) Unlock(key IntOrString) bool {
-	mtx, exists := k.getMutex(key)
-	if !exists {
-		return false
-	}
-	defer mtx.Unlock()
-	k.mutexes.Delete(key)
-	return true
-}
-
 type RedisStorage interface {
 	Get(key IntOrString) any
-	Set(key IntOrString, value any) bool
+	Set(key IntOrString, value any, ttl int64) bool
 	Delete(key IntOrString)
+	Iterate(outputChannel chan RedisKeyValueWithMeta)
 }
 
 type SimpleRedisStorage struct {
@@ -81,7 +36,7 @@ func (r *SimpleRedisStorage) Get(key IntOrString) any {
 	defer r.km.Unlock(key)
 
 	if data, exists := r.dataMap[key]; exists {
-		if data.expiry_timestamp > time.Now().Unix() {
+		if data.expiryTimestamp == REDIS_INFINITE_TTL || data.expiryTimestamp > time.Now().Unix() {
 			return data.value
 		} else {
 			go r.Delete(key) // TODO: check if this might cause async problem
@@ -90,11 +45,11 @@ func (r *SimpleRedisStorage) Get(key IntOrString) any {
 	return nil
 }
 
-func (r *SimpleRedisStorage) Set(key IntOrString, value any) bool {
+func (r *SimpleRedisStorage) Set(key IntOrString, value any, ttl int64) bool {
 	r.km.Lock(key)
 	defer r.km.Unlock(key)
-
-	r.dataMap[key] = newRedisValueWithMeta(0, value)
+	expiryTimestamp := time.Now().Add(time.Duration(ttl) * time.Second).Unix()
+	r.dataMap[key] = newRedisValueWithMeta(value, expiryTimestamp)
 	return true
 }
 
@@ -102,4 +57,11 @@ func (r *SimpleRedisStorage) Delete(key IntOrString) {
 	r.km.Lock(key)
 	delete(r.dataMap, key)
 	r.km.Unlock(key)
+}
+
+func (r *SimpleRedisStorage) Iterate(outputChannel chan RedisKeyValueWithMeta) {
+	for key, data := range r.dataMap {
+		outputChannel <- newRedisKeyValueWithMeta(key, data)
+	}
+	close(outputChannel)
 }
