@@ -43,7 +43,7 @@ func handleConnection(conn net.Conn, handler MessageHandler) {
 		for {
 			response, ok := <-outputChannel // getting response for the client
 			if !ok {                        // if outputChannel is closed
-				// fmt.Println("closing output loop")
+				// log.Println("closing output loop")
 				return
 			}
 			_, err := conn.Write(response) // sending response back to client
