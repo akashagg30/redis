@@ -1,7 +1,6 @@
 package redis
 
 import (
-	"fmt"
 	"log"
 
 	"github.com/akashagg30/redis/redis/controller"
@@ -30,7 +29,7 @@ func MessageHandler(inputChannel chan []byte, outputChannel chan []byte) {
 	for {
 		data, ok := <-inputChannel
 		if !ok {
-			fmt.Println("closing handler loop")
+			log.Println("closing handler loop")
 			break
 		}
 		log.Println("recieved data", string(data))

@@ -38,19 +38,19 @@ func (r *RESPDeserializer) deserializeAll() any {
 		case '#':
 			return r.deserializeBool()
 		case '-':
-			// fmt.Println("processing error")
+			// log.Println("processing error")
 			return r.deserializeError()
 		case '+':
-			// fmt.Println("processing simple string")
+			// log.Println("processing simple string")
 			return r.deserializeSimpleString()
 		case '$':
-			// fmt.Println("processing bulk string")
+			// log.Println("processing bulk string")
 			return r.deserializeBulkString()
 		case ':':
-			// fmt.Println("processing integer")
+			// log.Println("processing integer")
 			return r.deserializeInteger()
 		case '*':
-			// fmt.Println("processing array")
+			// log.Println("processing array")
 			return r.deserializeArray()
 		default:
 			println("some issue", string(firstLiteral))

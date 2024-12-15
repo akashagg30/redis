@@ -13,8 +13,9 @@ type RedisStorage interface {
 }
 
 type SimpleRedisStorage struct {
-	dataMap map[IntOrString]RedisValueWithMeta
-	km      *KeyedMutex
+	dataMap  map[IntOrString]RedisValueWithMeta
+	km       *KeyedMutex
+	capacity int64
 }
 
 var (
@@ -22,10 +23,20 @@ var (
 	redisStorageOnce     sync.Once
 )
 
-func NewRedisStorage() RedisStorage {
+func NewRedisStorage(args ...int64) RedisStorage {
 	redisStorageOnce.Do(
 		func() {
-			redisStorageInstance = &SimpleRedisStorage{dataMap: make(map[IntOrString]RedisValueWithMeta), km: &KeyedMutex{}}
+			var dataMap map[IntOrString]RedisValueWithMeta
+			var sizeOfStorage int64
+			if len(args) != 0 {
+				sizeOfStorage = args[0]
+			}
+			if sizeOfStorage == 0 {
+				dataMap = make(map[IntOrString]RedisValueWithMeta)
+			} else {
+				dataMap = make(map[IntOrString]RedisValueWithMeta, sizeOfStorage)
+			}
+			redisStorageInstance = &SimpleRedisStorage{dataMap: dataMap, km: &KeyedMutex{}, capacity: sizeOfStorage}
 		},
 	)
 	return redisStorageInstance
@@ -45,12 +56,31 @@ func (r *SimpleRedisStorage) Get(key IntOrString) any {
 	return nil
 }
 
+func (r *SimpleRedisStorage) keyExists(key IntOrString) bool {
+	_, exists := r.dataMap[key]
+	return exists
+}
+
+func (r *SimpleRedisStorage) set(key IntOrString, value RedisValueWithMeta) bool {
+	if r.capacity == 0 || len(r.dataMap) < int(r.capacity) || r.keyExists(key) {
+		r.dataMap[key] = value
+		return true
+	} else {
+		return false
+	}
+}
+
 func (r *SimpleRedisStorage) Set(key IntOrString, value any, ttl int64) bool {
 	r.km.Lock(key)
 	defer r.km.Unlock(key)
-	expiryTimestamp := time.Now().Add(time.Duration(ttl) * time.Second).Unix()
-	r.dataMap[key] = newRedisValueWithMeta(value, expiryTimestamp)
-	return true
+
+	var expiryTimestamp int64
+	if ttl == -1 {
+		expiryTimestamp = -1
+	} else {
+		expiryTimestamp = time.Now().Add(time.Duration(ttl) * time.Second).Unix()
+	}
+	return r.set(key, newRedisValueWithMeta(value, expiryTimestamp))
 }
 
 func (r *SimpleRedisStorage) Delete(key IntOrString) {
