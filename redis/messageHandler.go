@@ -2,7 +2,9 @@ package redis
 
 import (
 	"log"
+	"time"
 
+	"github.com/akashagg30/redis/redis/aof"
 	"github.com/akashagg30/redis/redis/controller"
 	"github.com/akashagg30/redis/redis/resp"
 )
@@ -11,6 +13,11 @@ func MessageHandler(inputChannel chan []byte, outputChannel chan []byte) {
 	resp := resp.NewRESP(make([]byte, 0))
 	defer resp.Close()
 	redis_controller := controller.NewRedisController()
+	aofManager, err := aof.NewAOFManager(time.Second)
+	if err != nil {
+		log.Fatal(err)
+	}
+	redis_controller.RegisterConsumer(aofManager)
 	go func() {
 		defer close(outputChannel)
 		for {

@@ -2,9 +2,8 @@
 package main
 
 import (
+	"flag"
 	"log"
-	"os"
-	"strconv"
 	"time"
 
 	"github.com/akashagg30/redis/redis"
@@ -26,25 +25,8 @@ func main() {
 }
 
 func getPortAndSize() (port string, redisSize int64) {
-	args := os.Args[1:]
-	portindex := -1
-	port = "8080"
-	redisSize = 10000
-	sizeindex := -1
-	for i, value := range args {
-		switch value { // setting index of values
-		case "-p":
-			portindex = i + 1
-		case "-c":
-			sizeindex = i + 1
-		}
-
-		switch i { // setting values id index matches
-		case portindex:
-			port = value
-		case sizeindex:
-			redisSize, _ = strconv.ParseInt(value, 10, 64)
-		}
-	}
+	flag.StringVar(&port, "p", "8080", "port to use")
+	flag.Int64Var(&redisSize, "c", 0, "size of redis storage")
+	flag.Parse()
 	return
 }
